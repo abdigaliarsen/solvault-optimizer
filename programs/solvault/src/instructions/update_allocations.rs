@@ -37,9 +37,15 @@ pub fn handler(
         }
     }
 
+    // Zero out current_amount to prevent stale bookkeeping
+    let mut cleaned_allocations = new_allocations;
+    for alloc in cleaned_allocations.iter_mut() {
+        alloc.current_amount = 0;
+    }
+
     let vault = &mut ctx.accounts.vault;
-    vault.num_allocations = new_allocations.len() as u8;
-    vault.allocations = new_allocations;
+    vault.num_allocations = cleaned_allocations.len() as u8;
+    vault.allocations = cleaned_allocations;
 
     msg!("Updated allocations to {} protocols", vault.num_allocations);
     Ok(())

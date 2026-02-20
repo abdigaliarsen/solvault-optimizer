@@ -18,12 +18,9 @@ pub struct Withdraw<'info> {
         mut,
         seeds = [POSITION_SEED, user.key().as_ref()],
         bump = position.bump,
-        has_one = owner @ VaultError::Unauthorized,
+        constraint = position.owner == user.key() @ VaultError::Unauthorized,
     )]
     pub position: Account<'info, UserPosition>,
-
-    /// CHECK: Validated by has_one constraint on position
-    pub owner: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }

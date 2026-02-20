@@ -4,6 +4,9 @@ pub mod withdraw;
 pub mod rebalance;
 pub mod update_allocations;
 pub mod update_config;
+pub mod collect_fees;
+pub mod close_position;
+pub mod transfer_authority;
 
 pub use initialize::*;
 pub use deposit::*;
@@ -11,3 +14,6 @@ pub use withdraw::*;
 pub use rebalance::*;
 pub use update_allocations::*;
 pub use update_config::*;
+pub use collect_fees::*;
+pub use close_position::*;
+pub use transfer_authority::*;

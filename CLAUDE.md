@@ -9,7 +9,7 @@ anchor build --no-idl -- --tools-version v1.52
 # Build IDL separately (uses platform-tools cargo/rustc)
 RUSTC=~/.cache/solana/v1.52/platform-tools/rust/bin/rustc CARGO=~/.cache/solana/v1.52/platform-tools/rust/bin/cargo anchor idl build --out target/idl/solvault.json
 
-# Run all 28 integration tests (starts local validator)
+# Run all 34 integration tests (starts local validator)
 anchor test --skip-build
 
 # Quick compilation check (no validator needed)
@@ -27,11 +27,11 @@ Deployed to Solana devnet.
 ## Project Structure
 
 - `programs/solvault/src/` — Anchor smart contract (Rust)
-  - `lib.rs` — Program entry, 6 instructions
+  - `lib.rs` — Program entry, 9 instructions
   - `state.rs` — Vault, UserPosition, Allocation accounts
   - `errors.rs` — 12 custom error codes
   - `instructions/` — Handler for each instruction
-- `tests/solvault.ts` — 28 TypeScript integration tests
+- `tests/solvault.ts` — 34 TypeScript integration tests
 - `frontend/` — React/Vite/Tailwind landing page & dashboard
 
 ## Rules

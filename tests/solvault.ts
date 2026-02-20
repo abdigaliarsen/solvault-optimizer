@@ -172,7 +172,7 @@ describe("solvault", () => {
           user: user2.publicKey,
           vault: vaultPda,
           position: positionPda,
-          owner: user2.publicKey,
+
           systemProgram: SystemProgram.programId,
         })
         .signers([user2])
@@ -240,7 +240,7 @@ describe("solvault", () => {
           user: authority.publicKey,
           vault: vaultPda,
           position: positionPda,
-          owner: authority.publicKey,
+
           systemProgram: SystemProgram.programId,
         })
         .rpc();
@@ -272,7 +272,7 @@ describe("solvault", () => {
             user: authority.publicKey,
             vault: vaultPda,
             position: positionPda,
-            owner: authority.publicKey,
+  
             systemProgram: SystemProgram.programId,
           })
           .rpc();
@@ -292,7 +292,7 @@ describe("solvault", () => {
             user: authority.publicKey,
             vault: vaultPda,
             position: positionPda,
-            owner: authority.publicKey,
+  
             systemProgram: SystemProgram.programId,
           })
           .rpc();
@@ -317,7 +317,7 @@ describe("solvault", () => {
             user: authority.publicKey,
             vault: vaultPda,
             position: positionPda,
-            owner: authority.publicKey,
+  
             systemProgram: SystemProgram.programId,
           })
           .rpc();
@@ -658,6 +658,180 @@ describe("solvault", () => {
   });
 
   // ─────────────────────────────────────────────────
+  // COLLECT FEES
+  // ─────────────────────────────────────────────────
+  describe("collect_fees", () => {
+    it("rejects collect_fees when no fees accrued", async () => {
+      try {
+        await program.methods
+          .collectFees()
+          .accounts({
+            authority: authority.publicKey,
+            vault: vaultPda,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.toString()).to.contain("ZeroAmount");
+      }
+    });
+
+    it("rejects collect_fees from non-authority", async () => {
+      const rando = Keypair.generate();
+      await fundWallet(rando, 1 * LAMPORTS_PER_SOL);
+
+      try {
+        await program.methods
+          .collectFees()
+          .accounts({
+            authority: rando.publicKey,
+            vault: vaultPda,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([rando])
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.toString()).to.contain("Unauthorized");
+      }
+    });
+  });
+
+  // ─────────────────────────────────────────────────
+  // CLOSE POSITION
+  // ─────────────────────────────────────────────────
+  describe("close_position", () => {
+    it("closes an empty position and reclaims rent", async () => {
+      const user = Keypair.generate();
+      await fundWallet(user, 5 * LAMPORTS_PER_SOL);
+      const [positionPda] = getPositionPda(user.publicKey);
+
+      // Deposit
+      await program.methods
+        .deposit(new anchor.BN(LAMPORTS_PER_SOL))
+        .accounts({
+          user: user.publicKey,
+          vault: vaultPda,
+          position: positionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      const position = await program.account.userPosition.fetch(positionPda);
+      const userShares = position.shares;
+
+      // Withdraw all
+      await program.methods
+        .withdraw(userShares)
+        .accounts({
+          user: user.publicKey,
+          vault: vaultPda,
+          position: positionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      const balBefore = await provider.connection.getBalance(user.publicKey);
+
+      // Close position
+      await program.methods
+        .closePosition()
+        .accounts({
+          user: user.publicKey,
+          position: positionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      const balAfter = await provider.connection.getBalance(user.publicKey);
+      // Should have gained rent back (minus tx fee)
+      expect(balAfter).to.be.greaterThan(balBefore - 10_000);
+
+      // Position account should no longer exist
+      const positionAccount = await provider.connection.getAccountInfo(positionPda);
+      expect(positionAccount).to.be.null;
+    });
+
+    it("rejects close_position with remaining shares", async () => {
+      const [positionPda] = getPositionPda(authority.publicKey);
+
+      try {
+        await program.methods
+          .closePosition()
+          .accounts({
+            user: authority.publicKey,
+            position: positionPda,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.toString()).to.contain("InsufficientShares");
+      }
+    });
+  });
+
+  // ─────────────────────────────────────────────────
+  // TRANSFER AUTHORITY
+  // ─────────────────────────────────────────────────
+  describe("transfer_authority", () => {
+    it("transfers authority to a new key", async () => {
+      const newAuthority = Keypair.generate();
+      await fundWallet(newAuthority, 1 * LAMPORTS_PER_SOL);
+
+      await program.methods
+        .transferAuthority()
+        .accounts({
+          authority: authority.publicKey,
+          newAuthority: newAuthority.publicKey,
+          vault: vaultPda,
+        })
+        .rpc();
+
+      const vault = await program.account.vault.fetch(vaultPda);
+      expect(vault.authority.toBase58()).to.equal(newAuthority.publicKey.toBase58());
+
+      // Transfer back so other tests continue to work
+      await program.methods
+        .transferAuthority()
+        .accounts({
+          authority: newAuthority.publicKey,
+          newAuthority: authority.publicKey,
+          vault: vaultPda,
+        })
+        .signers([newAuthority])
+        .rpc();
+
+      const vaultRestored = await program.account.vault.fetch(vaultPda);
+      expect(vaultRestored.authority.toBase58()).to.equal(authority.publicKey.toBase58());
+    });
+
+    it("rejects transfer from non-authority", async () => {
+      const rando = Keypair.generate();
+      await fundWallet(rando, 1 * LAMPORTS_PER_SOL);
+
+      try {
+        await program.methods
+          .transferAuthority()
+          .accounts({
+            authority: rando.publicKey,
+            newAuthority: rando.publicKey,
+            vault: vaultPda,
+          })
+          .signers([rando])
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.toString()).to.contain("Unauthorized");
+      }
+    });
+  });
+
+  // ─────────────────────────────────────────────────
   // FULL FLOW: deposit → rebalance → withdraw
   // ─────────────────────────────────────────────────
   describe("end-to-end flow", () => {
@@ -706,7 +880,7 @@ describe("solvault", () => {
           user: user.publicKey,
           vault: vaultPda,
           position: positionPda,
-          owner: user.publicKey,
+
           systemProgram: SystemProgram.programId,
         })
         .signers([user])

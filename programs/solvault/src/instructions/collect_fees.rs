@@ -1,0 +1,46 @@
+use anchor_lang::prelude::*;
+use crate::errors::VaultError;
+use crate::state::*;
+
+#[derive(Accounts)]
+pub struct CollectFees<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [VAULT_SEED],
+        bump = vault.bump,
+        has_one = authority @ VaultError::Unauthorized,
+    )]
+    pub vault: Account<'info, Vault>,
+
+    pub system_program: Program<'info, System>,
+}
+
+pub fn handler(ctx: Context<CollectFees>) -> Result<()> {
+    let vault = &ctx.accounts.vault;
+    let fee_amount = vault.accrued_fees;
+
+    require!(fee_amount > 0, VaultError::ZeroAmount);
+
+    // Transfer accrued fees from vault PDA to authority
+    let vault_account_info = ctx.accounts.vault.to_account_info();
+    **vault_account_info.try_borrow_mut_lamports()? = vault_account_info
+        .lamports()
+        .checked_sub(fee_amount)
+        .ok_or(VaultError::MathOverflow)?;
+    **ctx.accounts.authority.try_borrow_mut_lamports()? = ctx
+        .accounts
+        .authority
+        .lamports()
+        .checked_add(fee_amount)
+        .ok_or(VaultError::MathOverflow)?;
+
+    // Reset accrued fees
+    let vault = &mut ctx.accounts.vault;
+    vault.accrued_fees = 0;
+
+    msg!("Collected {} lamports in fees", fee_amount);
+    Ok(())
+}

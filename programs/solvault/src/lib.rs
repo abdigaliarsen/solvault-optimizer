@@ -55,4 +55,19 @@ pub mod solvault {
     ) -> Result<()> {
         instructions::update_config::handler(ctx, new_fee_bps, new_deposit_cap, new_paused)
     }
+
+    /// Collect accrued performance fees to authority
+    pub fn collect_fees(ctx: Context<CollectFees>) -> Result<()> {
+        instructions::collect_fees::handler(ctx)
+    }
+
+    /// Close an empty user position and reclaim rent
+    pub fn close_position(ctx: Context<ClosePosition>) -> Result<()> {
+        instructions::close_position::handler(ctx)
+    }
+
+    /// Transfer vault authority to a new key
+    pub fn transfer_authority(ctx: Context<TransferAuthority>) -> Result<()> {
+        instructions::transfer_authority::handler(ctx)
+    }
 }

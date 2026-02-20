@@ -37,6 +37,15 @@ pub fn handler(
     let total_pct: u16 = allocations.iter().map(|a| a.target_pct as u16).sum();
     require!(total_pct == 100, VaultError::InvalidAllocations);
 
+    // Validate no duplicate protocol IDs
+    for (i, a) in allocations.iter().enumerate() {
+        for (j, b) in allocations.iter().enumerate() {
+            if i != j && a.protocol_id == b.protocol_id {
+                return err!(VaultError::InvalidAllocations);
+            }
+        }
+    }
+
     let vault = &mut ctx.accounts.vault;
     vault.authority = ctx.accounts.authority.key();
     vault.total_deposited = 0;
