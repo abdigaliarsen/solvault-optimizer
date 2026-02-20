@@ -17,6 +17,7 @@ import {
   Info,
   ArrowLeft,
 } from "lucide-react";
+import { VaultSolLogo, PROTOCOL_ICONS } from "../components/icons/ProtocolIcons";
 
 // ─── Data ────────────────────────────────────────────────────
 
@@ -176,7 +177,7 @@ const AppDashboard = () => {
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-2.5 group">
               <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
-                <span className="text-primary-foreground font-bold text-sm">V</span>
+                <VaultSolLogo size={18} className="text-primary-foreground" />
               </div>
               <span className="font-bold text-lg tracking-tight">VaultSol</span>
             </Link>
@@ -480,19 +481,21 @@ const AppDashboard = () => {
                 </div>
 
                 <div className="space-y-3">
-                  {ALLOCATIONS.map((a) => (
+                  {ALLOCATIONS.map((a) => {
+                    const Icon = PROTOCOL_ICONS[a.protocol];
+                    return (
                     <div
                       key={a.protocol}
                       className="flex items-center gap-3 rounded-lg hover:bg-muted/20 p-2 -mx-2 transition-colors group"
                     >
                       <div
-                        className="h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0"
+                        className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
                         style={{
                           backgroundColor: `${a.color}15`,
                           color: a.color,
                         }}
                       >
-                        {a.abbr}
+                        {Icon ? <Icon size={16} /> : a.abbr}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
@@ -515,7 +518,8 @@ const AppDashboard = () => {
                         {a.apy}
                       </span>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </motion.div>
 

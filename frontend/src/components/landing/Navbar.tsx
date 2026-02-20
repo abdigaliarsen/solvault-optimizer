@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { VaultSolLogo } from "../icons/ProtocolIcons";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -25,7 +26,7 @@ const Navbar = () => {
         <div className="container mx-auto flex items-center justify-between px-6 py-3">
           <Link to="/" className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">V</span>
+              <VaultSolLogo size={18} className="text-primary-foreground" />
             </div>
             <span className="font-bold text-lg text-foreground tracking-tight">VaultSol</span>
           </Link>

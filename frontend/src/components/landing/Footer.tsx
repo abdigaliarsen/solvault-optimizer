@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { VaultSolLogo } from "../icons/ProtocolIcons";
 
 const Footer = () => {
   return (
@@ -7,7 +8,7 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <Link to="/" className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">V</span>
+              <VaultSolLogo size={16} className="text-primary-foreground" />
             </div>
             <span className="font-bold text-foreground">VaultSol</span>
           </Link>

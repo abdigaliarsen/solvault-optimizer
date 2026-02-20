@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, TrendingUp } from "lucide-react";
+import { VaultSolLogo, JitoLogo, MarinadeLogo, PROTOCOL_ICONS } from "../icons/ProtocolIcons";
 
 const Hero = () => {
   return (
@@ -94,7 +95,7 @@ const Hero = () => {
                 <div className="flex items-center justify-between p-3 rounded-xl border border-primary/30 bg-primary/5">
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-                      <span className="text-xs font-bold text-primary">V</span>
+                      <VaultSolLogo size={16} className="text-primary" />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">VaultSol</p>
@@ -107,7 +108,7 @@ const Hero = () => {
                 <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/20">
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                      <span className="text-xs font-bold text-muted-foreground">J</span>
+                      <JitoLogo size={16} className="text-muted-foreground" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">Jito (JitoSOL)</p>
@@ -119,7 +120,7 @@ const Hero = () => {
                 <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/20">
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                      <span className="text-xs font-bold text-muted-foreground">M</span>
+                      <MarinadeLogo size={16} className="text-muted-foreground" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">Marinade</p>
@@ -148,9 +149,15 @@ const Hero = () => {
         >
           <p className="text-xs text-muted-foreground text-center mb-5">Routing yield across leading Solana protocols</p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
-            {["Jito", "Marinade", "Sanctum", "marginfi", "Kamino"].map((name) => (
-              <span key={name} className="rounded-full border border-border/50 bg-card/40 px-4 py-1.5 text-xs font-medium text-muted-foreground">{name}</span>
-            ))}
+            {["Jito", "Marinade", "Sanctum", "marginfi", "Kamino"].map((name) => {
+              const Icon = PROTOCOL_ICONS[name];
+              return (
+                <span key={name} className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-card/40 px-4 py-1.5 text-xs font-medium text-muted-foreground">
+                  {Icon && <Icon size={14} />}
+                  {name}
+                </span>
+              );
+            })}
           </div>
         </motion.div>
       </div>
