@@ -311,9 +311,13 @@ const AppDashboard = () => {
                       </div>
                       <div className="relative">
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "" || /^\d*\.?\d*$/.test(v)) setAmount(v);
+                          }}
                           placeholder="0.00"
                           className="w-full rounded-xl border border-border/60 bg-background/60 pl-4 pr-20 py-4 text-xl font-semibold focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/30"
                         />
@@ -393,7 +397,7 @@ const AppDashboard = () => {
                       className={`w-full rounded-xl py-3.5 text-sm font-semibold transition-all ${
                         amount && Number(amount) > 0
                           ? "bg-primary text-primary-foreground glow-green hover:brightness-110"
-                          : "bg-muted text-muted-foreground cursor-not-allowed"
+                          : "bg-muted/60 text-muted-foreground/70 border border-border/40 cursor-not-allowed"
                       }`}
                       disabled={!amount || Number(amount) <= 0}
                     >
