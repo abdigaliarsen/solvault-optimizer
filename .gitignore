@@ -28,3 +28,6 @@ target/
 **/*.rs.bk
 .anchor/
 test-ledger/
+
+# Claude Code
+.claude/
