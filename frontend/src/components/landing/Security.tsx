@@ -23,7 +23,7 @@ const items = [
 
 const Security = () => {
   return (
-    <section id="security" className="py-24">
+    <section id="security" className="py-16">
       <div className="container mx-auto px-6">
         <div className="max-w-5xl mx-auto rounded-2xl border border-border/40 bg-card/30 overflow-hidden">
           <div className="p-10 sm:p-14">

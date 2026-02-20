@@ -23,9 +23,9 @@ const steps = [
 
 const HowItWorks = () => {
   return (
-    <section id="how-it-works" className="py-24 relative">
+    <section id="how-it-works" className="py-16 relative">
       <div className="container mx-auto px-6">
-        <div className="mb-16">
+        <div className="mb-10">
           <p className="text-xs font-semibold text-primary tracking-widest uppercase mb-3">How It Works</p>
           <h2 className="text-3xl font-bold sm:text-4xl max-w-md">Three steps to optimized yield.</h2>
         </div>

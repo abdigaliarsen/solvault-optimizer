@@ -58,10 +58,12 @@ const Hero = () => {
                 Stake Now <ArrowRight className="h-4 w-4" />
               </Link>
               <a
-                href="https://docs.example.com"
+                href="https://github.com/abdigaliarsen/solvault-optimizer"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-lg border border-border px-7 py-3 text-sm font-semibold text-foreground hover:bg-muted/50 transition-colors"
               >
-                Read Docs
+                View on GitHub
               </a>
             </div>
           </motion.div>
@@ -144,10 +146,10 @@ const Hero = () => {
           transition={{ delay: 0.4, duration: 0.5 }}
           className="mt-20 pt-10 border-t border-border/30"
         >
-          <p className="text-xs text-muted-foreground text-center mb-6">Supported by leading Solana protocols</p>
-          <div className="flex items-center justify-center gap-10 flex-wrap opacity-60">
-            {["Phantom", "Solflare", "Jito", "Marinade", "Sanctum"].map((name) => (
-              <span key={name} className="text-sm font-medium text-muted-foreground tracking-wide">{name}</span>
+          <p className="text-xs text-muted-foreground text-center mb-5">Routing yield across leading Solana protocols</p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            {["Jito", "Marinade", "Sanctum", "marginfi", "Kamino"].map((name) => (
+              <span key={name} className="rounded-full border border-border/50 bg-card/40 px-4 py-1.5 text-xs font-medium text-muted-foreground">{name}</span>
             ))}
           </div>
         </motion.div>

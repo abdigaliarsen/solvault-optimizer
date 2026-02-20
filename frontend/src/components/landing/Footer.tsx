@@ -13,10 +13,8 @@ const Footer = () => {
           </Link>
 
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="https://twitter.com" className="hover:text-foreground transition-colors">X / Twitter</a>
-            <a href="https://github.com" className="hover:text-foreground transition-colors">GitHub</a>
-            <a href="https://docs.example.com" className="hover:text-foreground transition-colors">Docs</a>
-            <a href="https://discord.com" className="hover:text-foreground transition-colors">Discord</a>
+            <a href="https://github.com/abdigaliarsen/solvault-optimizer" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a>
+            <a href="https://explorer.solana.com/address/HjFqznCR9NYr3mxYYyhYqYLrm3xNiu71EAz5qHARjWrd?cluster=devnet" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Solana Explorer</a>
           </div>
 
           <p className="text-xs text-muted-foreground">© 2026 VaultSol. All rights reserved.</p>

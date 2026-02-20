@@ -1,4 +1,4 @@
-import { RefreshCw, Shield, Layers, Activity, Coins } from "lucide-react";
+import { RefreshCw, Shield, Layers, Activity, Coins, Lock } from "lucide-react";
 
 const features = [
   { icon: RefreshCw, title: "Auto-Compounding", desc: "Yields are automatically reinvested to maximize returns without manual intervention." },
@@ -6,13 +6,14 @@ const features = [
   { icon: Layers, title: "Non-Custodial", desc: "Fully on-chain Anchor program. Your keys, your funds — always." },
   { icon: Activity, title: "Real-Time Rebalancing", desc: "Continuous monitoring captures the best rates across DeFi." },
   { icon: Coins, title: "Single-Token Deposit", desc: "Deposit SOL and let VaultSol handle the rest. No wrapping needed." },
+  { icon: Lock, title: "Emergency Controls", desc: "Admin pause mechanism and deposit caps protect users during market volatility." },
 ];
 
 const Features = () => {
   return (
-    <section id="features" className="py-24">
+    <section id="features" className="py-16">
       <div className="container mx-auto px-6">
-        <div className="mb-16">
+        <div className="mb-10">
           <p className="text-xs font-semibold text-primary tracking-widest uppercase mb-3">Features</p>
           <h2 className="text-3xl font-bold sm:text-4xl max-w-md">Built for DeFi natives.</h2>
         </div>

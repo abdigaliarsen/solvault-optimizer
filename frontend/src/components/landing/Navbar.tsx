@@ -38,8 +38,8 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <a href="https://docs.example.com" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Docs
+            <a href="https://github.com/abdigaliarsen/solvault-optimizer" target="_blank" rel="noopener noreferrer" className="hidden sm:inline text-sm text-muted-foreground hover:text-foreground transition-colors">
+              GitHub
             </a>
             <Link
               to="/app"

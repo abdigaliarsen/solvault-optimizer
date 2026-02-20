@@ -8,7 +8,7 @@ const protocols = [
 
 const Integrations = () => {
   return (
-    <section id="integrations" className="py-24 border-t border-border/30">
+    <section id="integrations" className="py-16 border-t border-border/30">
       <div className="container mx-auto px-6">
         <div className="text-center mb-14">
           <p className="text-xs font-semibold text-primary tracking-widest uppercase mb-3">Integrations</p>
@@ -18,7 +18,7 @@ const Integrations = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 max-w-3xl mx-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 max-w-4xl mx-auto">
           {protocols.map((p) => (
             <div
               key={p.name}
