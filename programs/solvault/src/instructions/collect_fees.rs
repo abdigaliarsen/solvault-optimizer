@@ -24,12 +24,21 @@ pub fn handler(ctx: Context<CollectFees>) -> Result<()> {
 
     require!(fee_amount > 0, VaultError::ZeroAmount);
 
-    // Transfer accrued fees from vault PDA to authority
+    // Ensure vault stays above rent-exempt minimum after transfer
     let vault_account_info = ctx.accounts.vault.to_account_info();
-    **vault_account_info.try_borrow_mut_lamports()? = vault_account_info
+    let rent = Rent::get()?;
+    let min_balance = rent.minimum_balance(vault_account_info.data_len());
+    let vault_lamports_after = vault_account_info
         .lamports()
         .checked_sub(fee_amount)
         .ok_or(VaultError::MathOverflow)?;
+    require!(
+        vault_lamports_after >= min_balance,
+        VaultError::BelowRentExemption
+    );
+
+    // Transfer accrued fees from vault PDA to authority
+    **vault_account_info.try_borrow_mut_lamports()? = vault_lamports_after;
     **ctx.accounts.authority.try_borrow_mut_lamports()? = ctx
         .accounts
         .authority

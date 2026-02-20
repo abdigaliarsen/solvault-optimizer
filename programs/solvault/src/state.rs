@@ -10,8 +10,8 @@ pub const MIN_DEPOSIT_LAMPORTS: u64 = 10_000_000;
 pub const MAX_FEE_BPS: u16 = 3000;
 /// Basis points denominator
 pub const BPS_DENOMINATOR: u64 = 10_000;
-/// Initial share ratio: 1 SOL = 1_000_000 shares (for precision)
-pub const SHARES_PER_SOL: u64 = 1_000_000;
+/// Initial share ratio: 1 SOL = 1_000_000_000 shares (high precision to prevent inflation attacks)
+pub const SHARES_PER_SOL: u64 = 1_000_000_000;
 
 #[account]
 #[derive(InitSpace)]
@@ -41,6 +41,8 @@ pub struct Vault {
     pub last_rebalance_ts: i64,
     /// Total number of depositors (for stats)
     pub depositor_count: u64,
+    /// Pending authority for two-step transfer (default = no pending transfer)
+    pub pending_authority: Pubkey,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]

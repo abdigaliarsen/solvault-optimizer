@@ -73,7 +73,7 @@ pub fn handler(ctx: Context<Deposit>, amount: u64) -> Result<()> {
 
     // Update user position
     let position = &mut ctx.accounts.position;
-    let is_new_depositor = position.shares == 0 && position.deposited_amount == 0;
+    let is_new_depositor = position.shares == 0;
 
     position.owner = ctx.accounts.user.key();
     position.shares = position
@@ -117,7 +117,8 @@ fn calculate_shares_for_deposit(
             .ok_or(VaultError::MathOverflow)?
             .checked_div(1_000_000_000) // lamports per SOL
             .ok_or(VaultError::MathOverflow)?;
-        Ok(shares as u64)
+        let shares: u64 = shares.try_into().map_err(|_| VaultError::MathOverflow)?;
+        Ok(shares)
     } else {
         // Proportional: shares = deposit_amount * total_shares / total_deposited
         let shares = (deposit_amount as u128)
@@ -125,6 +126,7 @@ fn calculate_shares_for_deposit(
             .ok_or(VaultError::MathOverflow)?
             .checked_div(total_deposited as u128)
             .ok_or(VaultError::MathOverflow)?;
-        Ok(shares as u64)
+        let shares: u64 = shares.try_into().map_err(|_| VaultError::MathOverflow)?;
+        Ok(shares)
     }
 }

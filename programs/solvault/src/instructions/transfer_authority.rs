@@ -2,12 +2,11 @@ use anchor_lang::prelude::*;
 use crate::errors::VaultError;
 use crate::state::*;
 
-#[derive(Accounts)]
-pub struct TransferAuthority<'info> {
-    pub authority: Signer<'info>,
+// ── Step 1: Current authority proposes a new authority ──
 
-    /// CHECK: New authority, validated as non-default pubkey in handler
-    pub new_authority: AccountInfo<'info>,
+#[derive(Accounts)]
+pub struct ProposeAuthority<'info> {
+    pub authority: Signer<'info>,
 
     #[account(
         mut,
@@ -18,21 +17,49 @@ pub struct TransferAuthority<'info> {
     pub vault: Account<'info, Vault>,
 }
 
-pub fn handler(ctx: Context<TransferAuthority>) -> Result<()> {
-    let new_authority = ctx.accounts.new_authority.key();
+pub fn propose_handler(ctx: Context<ProposeAuthority>, new_authority: Pubkey) -> Result<()> {
+    let vault = &mut ctx.accounts.vault;
+    vault.pending_authority = new_authority;
+
+    if new_authority == Pubkey::default() {
+        msg!("Pending authority transfer cancelled");
+    } else {
+        msg!("Authority transfer proposed to {}", new_authority);
+    }
+    Ok(())
+}
+
+// ── Step 2: New authority accepts the transfer ──
+
+#[derive(Accounts)]
+pub struct AcceptAuthority<'info> {
+    pub new_authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [VAULT_SEED],
+        bump = vault.bump,
+        constraint = vault.pending_authority == new_authority.key() @ VaultError::Unauthorized,
+    )]
+    pub vault: Account<'info, Vault>,
+}
+
+pub fn accept_handler(ctx: Context<AcceptAuthority>) -> Result<()> {
+    let vault = &mut ctx.accounts.vault;
+
     require!(
-        new_authority != Pubkey::default(),
-        VaultError::Unauthorized
+        vault.pending_authority != Pubkey::default(),
+        VaultError::NoPendingTransfer
     );
 
-    let vault = &mut ctx.accounts.vault;
     let old_authority = vault.authority;
-    vault.authority = new_authority;
+    vault.authority = vault.pending_authority;
+    vault.pending_authority = Pubkey::default();
 
     msg!(
         "Authority transferred from {} to {}",
         old_authority,
-        new_authority
+        vault.authority
     );
     Ok(())
 }

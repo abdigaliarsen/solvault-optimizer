@@ -66,8 +66,13 @@ pub mod solvault {
         instructions::close_position::handler(ctx)
     }
 
-    /// Transfer vault authority to a new key
-    pub fn transfer_authority(ctx: Context<TransferAuthority>) -> Result<()> {
-        instructions::transfer_authority::handler(ctx)
+    /// Propose a new authority (step 1 of two-step transfer)
+    pub fn propose_authority(ctx: Context<ProposeAuthority>, new_authority: Pubkey) -> Result<()> {
+        instructions::transfer_authority::propose_handler(ctx, new_authority)
+    }
+
+    /// Accept authority transfer (step 2 — new authority must sign)
+    pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
+        instructions::transfer_authority::accept_handler(ctx)
     }
 }

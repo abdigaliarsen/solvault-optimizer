@@ -45,21 +45,26 @@ pub fn handler(ctx: Context<Withdraw>, shares_to_burn: u64) -> Result<()> {
 
     // Calculate performance fee on any yield
     let position = &ctx.accounts.position;
-    let proportional_deposit = (position.deposited_amount as u128)
+    let proportional_deposit: u64 = (position.deposited_amount as u128)
         .checked_mul(shares_to_burn as u128)
         .ok_or(VaultError::MathOverflow)?
         .checked_div(position.shares as u128)
-        .ok_or(VaultError::MathOverflow)? as u64;
+        .ok_or(VaultError::MathOverflow)?
+        .try_into()
+        .map_err(|_| VaultError::MathOverflow)?;
 
     let fee = if withdraw_amount > proportional_deposit {
         let yield_amount = withdraw_amount
             .checked_sub(proportional_deposit)
             .ok_or(VaultError::MathOverflow)?;
-        (yield_amount as u128)
+        let fee: u64 = (yield_amount as u128)
             .checked_mul(vault.performance_fee_bps as u128)
             .ok_or(VaultError::MathOverflow)?
             .checked_div(BPS_DENOMINATOR as u128)
-            .ok_or(VaultError::MathOverflow)? as u64
+            .ok_or(VaultError::MathOverflow)?
+            .try_into()
+            .map_err(|_| VaultError::MathOverflow)?;
+        fee
     } else {
         0
     };
@@ -68,30 +73,48 @@ pub fn handler(ctx: Context<Withdraw>, shares_to_burn: u64) -> Result<()> {
         .checked_sub(fee)
         .ok_or(VaultError::MathOverflow)?;
 
-    // Check remaining shares won't leave dust
+    // Check remaining shares won't leave dust (use post-withdrawal values)
     let remaining_shares = position
         .shares
         .checked_sub(shares_to_burn)
         .ok_or(VaultError::MathOverflow)?;
     if remaining_shares > 0 {
-        let remaining_value = (remaining_shares as u128)
-            .checked_mul(vault.total_deposited as u128)
+        let post_total_deposited = vault
+            .total_deposited
+            .checked_sub(withdraw_amount)
+            .ok_or(VaultError::MathOverflow)?;
+        let post_total_shares = vault
+            .total_shares
+            .checked_sub(shares_to_burn)
+            .ok_or(VaultError::MathOverflow)?;
+        let remaining_value: u64 = (remaining_shares as u128)
+            .checked_mul(post_total_deposited as u128)
             .ok_or(VaultError::MathOverflow)?
-            .checked_div(vault.total_shares as u128)
-            .ok_or(VaultError::MathOverflow)? as u64;
+            .checked_div(post_total_shares as u128)
+            .ok_or(VaultError::MathOverflow)?
+            .try_into()
+            .map_err(|_| VaultError::MathOverflow)?;
         require!(
             remaining_value >= MIN_DEPOSIT_LAMPORTS,
             VaultError::DustWithdrawal
         );
     }
 
-    // Transfer SOL from vault PDA to user
-    // The vault PDA is owned by our program, so we can directly modify lamports
+    // Ensure vault stays above rent-exempt minimum after transfer
     let vault_account_info = ctx.accounts.vault.to_account_info();
-    **vault_account_info.try_borrow_mut_lamports()? = vault_account_info
+    let rent = Rent::get()?;
+    let min_balance = rent.minimum_balance(vault_account_info.data_len());
+    let vault_lamports_after = vault_account_info
         .lamports()
         .checked_sub(net_amount)
         .ok_or(VaultError::MathOverflow)?;
+    require!(
+        vault_lamports_after >= min_balance,
+        VaultError::BelowRentExemption
+    );
+
+    // Transfer SOL from vault PDA to user
+    **vault_account_info.try_borrow_mut_lamports()? = vault_lamports_after;
     **ctx.accounts.user.try_borrow_mut_lamports()? = ctx
         .accounts
         .user
@@ -118,7 +141,7 @@ pub fn handler(ctx: Context<Withdraw>, shares_to_burn: u64) -> Result<()> {
     let position = &mut ctx.accounts.position;
     position.shares = remaining_shares;
     // Reduce deposited_amount proportionally
-    let deposit_reduction = (position.deposited_amount as u128)
+    let deposit_reduction: u64 = (position.deposited_amount as u128)
         .checked_mul(shares_to_burn as u128)
         .ok_or(VaultError::MathOverflow)?
         .checked_div(
@@ -127,7 +150,9 @@ pub fn handler(ctx: Context<Withdraw>, shares_to_burn: u64) -> Result<()> {
                 .checked_add(shares_to_burn)
                 .ok_or(VaultError::MathOverflow)? as u128,
         )
-        .ok_or(VaultError::MathOverflow)? as u64;
+        .ok_or(VaultError::MathOverflow)?
+        .try_into()
+        .map_err(|_| VaultError::MathOverflow)?;
     position.deposited_amount = position
         .deposited_amount
         .checked_sub(deposit_reduction)
@@ -151,10 +176,12 @@ fn calculate_withdrawal_amount(
     total_deposited: u64,
     total_shares: u64,
 ) -> Result<u64> {
-    let amount = (shares_to_burn as u128)
+    let amount: u64 = (shares_to_burn as u128)
         .checked_mul(total_deposited as u128)
         .ok_or(VaultError::MathOverflow)?
         .checked_div(total_shares as u128)
-        .ok_or(VaultError::MathOverflow)?;
-    Ok(amount as u64)
+        .ok_or(VaultError::MathOverflow)?
+        .try_into()
+        .map_err(|_| VaultError::MathOverflow)?;
+    Ok(amount)
 }

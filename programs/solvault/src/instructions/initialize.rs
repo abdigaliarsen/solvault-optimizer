@@ -46,6 +46,12 @@ pub fn handler(
         }
     }
 
+    // Zero out current_amount to prevent stale values from init args
+    let mut cleaned_allocations = allocations;
+    for alloc in cleaned_allocations.iter_mut() {
+        alloc.current_amount = 0;
+    }
+
     let vault = &mut ctx.accounts.vault;
     vault.authority = ctx.accounts.authority.key();
     vault.total_deposited = 0;
@@ -53,12 +59,13 @@ pub fn handler(
     vault.performance_fee_bps = performance_fee_bps;
     vault.deposit_cap = deposit_cap;
     vault.is_paused = false;
-    vault.num_allocations = allocations.len() as u8;
-    vault.allocations = allocations;
+    vault.num_allocations = cleaned_allocations.len() as u8;
+    vault.allocations = cleaned_allocations;
     vault.bump = ctx.bumps.vault;
     vault.accrued_fees = 0;
     vault.last_rebalance_ts = Clock::get()?.unix_timestamp;
     vault.depositor_count = 0;
+    vault.pending_authority = Pubkey::default();
 
     msg!("Vault initialized with {} allocations", vault.num_allocations);
     Ok(())

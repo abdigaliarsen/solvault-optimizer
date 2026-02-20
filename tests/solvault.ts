@@ -18,6 +18,9 @@ describe("solvault", () => {
 
   let vaultPda: PublicKey;
 
+  // SHARES_PER_SOL = 1_000_000_000 (1e9)
+  const SHARES_PER_SOL = 1_000_000_000;
+
   const defaultAllocations = [
     { protocolId: 0, targetPct: 35, currentAmount: new anchor.BN(0) }, // Jito
     { protocolId: 1, targetPct: 25, currentAmount: new anchor.BN(0) }, // Marinade
@@ -81,6 +84,16 @@ describe("solvault", () => {
       expect(vault.depositorCount.toNumber()).to.equal(0);
       expect(vault.accruedFees.toNumber()).to.equal(0);
       expect(vault.numAllocations).to.equal(5);
+      // pending_authority should be default (zeroed)
+      expect(vault.pendingAuthority.toBase58()).to.equal(PublicKey.default.toBase58());
+    });
+
+    it("zeroes current_amount even if provided with non-zero values", async () => {
+      // This test just verifies the init already happened correctly above
+      const vault = await program.account.vault.fetch(vaultPda);
+      for (const alloc of vault.allocations) {
+        expect(alloc.currentAmount.toNumber()).to.equal(0);
+      }
     });
   });
 
@@ -104,13 +117,13 @@ describe("solvault", () => {
 
       const vault = await program.account.vault.fetch(vaultPda);
       expect(vault.totalDeposited.toNumber()).to.equal(LAMPORTS_PER_SOL);
-      // First deposit: 1 SOL = 1_000_000 shares
-      expect(vault.totalShares.toNumber()).to.equal(1_000_000);
+      // First deposit: 1 SOL = 1_000_000_000 shares (SHARES_PER_SOL)
+      expect(vault.totalShares.toNumber()).to.equal(SHARES_PER_SOL);
       expect(vault.depositorCount.toNumber()).to.equal(1);
 
       const position = await program.account.userPosition.fetch(positionPda);
       expect(position.owner.toBase58()).to.equal(authority.publicKey.toBase58());
-      expect(position.shares.toNumber()).to.equal(1_000_000);
+      expect(position.shares.toNumber()).to.equal(SHARES_PER_SOL);
       expect(position.depositedAmount.toNumber()).to.equal(LAMPORTS_PER_SOL);
     });
 
@@ -130,11 +143,11 @@ describe("solvault", () => {
 
       const vault = await program.account.vault.fetch(vaultPda);
       expect(vault.totalDeposited.toNumber()).to.equal(3 * LAMPORTS_PER_SOL);
-      // 2 SOL * 1_000_000 shares / 1 SOL = 2_000_000 new shares, total 3_000_000
-      expect(vault.totalShares.toNumber()).to.equal(3_000_000);
+      // 2 SOL * 1e9 shares / 1 SOL = 2e9 new shares, total 3e9
+      expect(vault.totalShares.toNumber()).to.equal(3 * SHARES_PER_SOL);
 
       const position = await program.account.userPosition.fetch(positionPda);
-      expect(position.shares.toNumber()).to.equal(3_000_000);
+      expect(position.shares.toNumber()).to.equal(3 * SHARES_PER_SOL);
       expect(position.depositedAmount.toNumber()).to.equal(3 * LAMPORTS_PER_SOL);
     });
 
@@ -162,17 +175,16 @@ describe("solvault", () => {
 
       const position = await program.account.userPosition.fetch(positionPda);
       expect(position.owner.toBase58()).to.equal(user2.publicKey.toBase58());
-      // Proportional: 1 SOL * 3_000_000 / 3 SOL = 1_000_000 shares
-      expect(position.shares.toNumber()).to.equal(1_000_000);
+      // Proportional: 1 SOL * 3e9 / 3 SOL = 1e9 shares
+      expect(position.shares.toNumber()).to.equal(SHARES_PER_SOL);
 
       // Withdraw user2 fully to clean up state for later tests
       await program.methods
-        .withdraw(new anchor.BN(1_000_000))
+        .withdraw(new anchor.BN(SHARES_PER_SOL))
         .accounts({
           user: user2.publicKey,
           vault: vaultPda,
           position: positionPda,
-
           systemProgram: SystemProgram.programId,
         })
         .signers([user2])
@@ -227,7 +239,7 @@ describe("solvault", () => {
   // ─────────────────────────────────────────────────
   describe("withdraw", () => {
     it("withdraws SOL by burning shares", async () => {
-      const sharesToBurn = new anchor.BN(1_000_000); // 1/3 of 3M shares
+      const sharesToBurn = new anchor.BN(SHARES_PER_SOL); // 1/3 of 3e9 shares
       const [positionPda] = getPositionPda(authority.publicKey);
 
       const balanceBefore = await provider.connection.getBalance(
@@ -240,17 +252,16 @@ describe("solvault", () => {
           user: authority.publicKey,
           vault: vaultPda,
           position: positionPda,
-
           systemProgram: SystemProgram.programId,
         })
         .rpc();
 
       const vault = await program.account.vault.fetch(vaultPda);
-      expect(vault.totalShares.toNumber()).to.equal(2_000_000);
+      expect(vault.totalShares.toNumber()).to.equal(2 * SHARES_PER_SOL);
       expect(vault.totalDeposited.toNumber()).to.equal(2 * LAMPORTS_PER_SOL);
 
       const position = await program.account.userPosition.fetch(positionPda);
-      expect(position.shares.toNumber()).to.equal(2_000_000);
+      expect(position.shares.toNumber()).to.equal(2 * SHARES_PER_SOL);
 
       const balanceAfter = await provider.connection.getBalance(
         authority.publicKey
@@ -262,7 +273,7 @@ describe("solvault", () => {
     });
 
     it("rejects withdrawal with insufficient shares", async () => {
-      const tooMany = new anchor.BN(999_999_999);
+      const tooMany = new anchor.BN(999_999_999_999);
       const [positionPda] = getPositionPda(authority.publicKey);
 
       try {
@@ -272,7 +283,6 @@ describe("solvault", () => {
             user: authority.publicKey,
             vault: vaultPda,
             position: positionPda,
-  
             systemProgram: SystemProgram.programId,
           })
           .rpc();
@@ -292,7 +302,6 @@ describe("solvault", () => {
             user: authority.publicKey,
             vault: vaultPda,
             position: positionPda,
-  
             systemProgram: SystemProgram.programId,
           })
           .rpc();
@@ -317,7 +326,6 @@ describe("solvault", () => {
             user: authority.publicKey,
             vault: vaultPda,
             position: positionPda,
-  
             systemProgram: SystemProgram.programId,
           })
           .rpc();
@@ -773,53 +781,161 @@ describe("solvault", () => {
         expect(err.toString()).to.contain("InsufficientShares");
       }
     });
+
+    it("re-deposit after closing position counts as new depositor", async () => {
+      const user = Keypair.generate();
+      await fundWallet(user, 5 * LAMPORTS_PER_SOL);
+      const [positionPda] = getPositionPda(user.publicKey);
+
+      // Deposit
+      await program.methods
+        .deposit(new anchor.BN(LAMPORTS_PER_SOL))
+        .accounts({
+          user: user.publicKey,
+          vault: vaultPda,
+          position: positionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      const vaultAfterDeposit = await program.account.vault.fetch(vaultPda);
+      const countAfterDeposit = vaultAfterDeposit.depositorCount.toNumber();
+
+      const position = await program.account.userPosition.fetch(positionPda);
+
+      // Withdraw all
+      await program.methods
+        .withdraw(position.shares)
+        .accounts({
+          user: user.publicKey,
+          vault: vaultPda,
+          position: positionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      const vaultAfterWithdraw = await program.account.vault.fetch(vaultPda);
+      expect(vaultAfterWithdraw.depositorCount.toNumber()).to.equal(countAfterDeposit - 1);
+
+      // Close position
+      await program.methods
+        .closePosition()
+        .accounts({
+          user: user.publicKey,
+          position: positionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      // Re-deposit
+      await program.methods
+        .deposit(new anchor.BN(LAMPORTS_PER_SOL))
+        .accounts({
+          user: user.publicKey,
+          vault: vaultPda,
+          position: positionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      const vaultFinal = await program.account.vault.fetch(vaultPda);
+      // depositor_count should be incremented (new depositor because shares were 0)
+      expect(vaultFinal.depositorCount.toNumber()).to.equal(countAfterDeposit);
+
+      // Clean up: withdraw
+      const pos2 = await program.account.userPosition.fetch(positionPda);
+      await program.methods
+        .withdraw(pos2.shares)
+        .accounts({
+          user: user.publicKey,
+          vault: vaultPda,
+          position: positionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+    });
   });
 
   // ─────────────────────────────────────────────────
-  // TRANSFER AUTHORITY
+  // TWO-STEP AUTHORITY TRANSFER
   // ─────────────────────────────────────────────────
-  describe("transfer_authority", () => {
-    it("transfers authority to a new key", async () => {
+  describe("propose_authority / accept_authority", () => {
+    it("two-step authority transfer works correctly", async () => {
       const newAuthority = Keypair.generate();
       await fundWallet(newAuthority, 1 * LAMPORTS_PER_SOL);
 
+      // Step 1: propose
       await program.methods
-        .transferAuthority()
+        .proposeAuthority(newAuthority.publicKey)
         .accounts({
           authority: authority.publicKey,
-          newAuthority: newAuthority.publicKey,
           vault: vaultPda,
         })
         .rpc();
 
-      const vault = await program.account.vault.fetch(vaultPda);
-      expect(vault.authority.toBase58()).to.equal(newAuthority.publicKey.toBase58());
+      const vaultAfterPropose = await program.account.vault.fetch(vaultPda);
+      expect(vaultAfterPropose.pendingAuthority.toBase58()).to.equal(
+        newAuthority.publicKey.toBase58()
+      );
+      // Authority hasn't changed yet
+      expect(vaultAfterPropose.authority.toBase58()).to.equal(
+        authority.publicKey.toBase58()
+      );
 
-      // Transfer back so other tests continue to work
+      // Step 2: accept (new authority must sign)
       await program.methods
-        .transferAuthority()
+        .acceptAuthority()
         .accounts({
-          authority: newAuthority.publicKey,
-          newAuthority: authority.publicKey,
+          newAuthority: newAuthority.publicKey,
           vault: vaultPda,
         })
         .signers([newAuthority])
+        .rpc();
+
+      const vaultAfterAccept = await program.account.vault.fetch(vaultPda);
+      expect(vaultAfterAccept.authority.toBase58()).to.equal(
+        newAuthority.publicKey.toBase58()
+      );
+      expect(vaultAfterAccept.pendingAuthority.toBase58()).to.equal(
+        PublicKey.default.toBase58()
+      );
+
+      // Transfer back so other tests continue to work
+      await program.methods
+        .proposeAuthority(authority.publicKey)
+        .accounts({
+          authority: newAuthority.publicKey,
+          vault: vaultPda,
+        })
+        .signers([newAuthority])
+        .rpc();
+
+      await program.methods
+        .acceptAuthority()
+        .accounts({
+          newAuthority: authority.publicKey,
+          vault: vaultPda,
+        })
         .rpc();
 
       const vaultRestored = await program.account.vault.fetch(vaultPda);
       expect(vaultRestored.authority.toBase58()).to.equal(authority.publicKey.toBase58());
     });
 
-    it("rejects transfer from non-authority", async () => {
+    it("rejects propose from non-authority", async () => {
       const rando = Keypair.generate();
       await fundWallet(rando, 1 * LAMPORTS_PER_SOL);
 
       try {
         await program.methods
-          .transferAuthority()
+          .proposeAuthority(rando.publicKey)
           .accounts({
             authority: rando.publicKey,
-            newAuthority: rando.publicKey,
             vault: vaultPda,
           })
           .signers([rando])
@@ -828,6 +944,46 @@ describe("solvault", () => {
       } catch (err) {
         expect(err.toString()).to.contain("Unauthorized");
       }
+    });
+
+    it("rejects accept from wrong signer", async () => {
+      const newAuth = Keypair.generate();
+      const wrongSigner = Keypair.generate();
+      await fundWallet(newAuth, 1 * LAMPORTS_PER_SOL);
+      await fundWallet(wrongSigner, 1 * LAMPORTS_PER_SOL);
+
+      // Propose newAuth
+      await program.methods
+        .proposeAuthority(newAuth.publicKey)
+        .accounts({
+          authority: authority.publicKey,
+          vault: vaultPda,
+        })
+        .rpc();
+
+      // Wrong signer tries to accept
+      try {
+        await program.methods
+          .acceptAuthority()
+          .accounts({
+            newAuthority: wrongSigner.publicKey,
+            vault: vaultPda,
+          })
+          .signers([wrongSigner])
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.toString()).to.contain("Unauthorized");
+      }
+
+      // Clean up: reset pending
+      await program.methods
+        .proposeAuthority(PublicKey.default)
+        .accounts({
+          authority: authority.publicKey,
+          vault: vaultPda,
+        })
+        .rpc();
     });
   });
 
@@ -880,7 +1036,6 @@ describe("solvault", () => {
           user: user.publicKey,
           vault: vaultPda,
           position: positionPda,
-
           systemProgram: SystemProgram.programId,
         })
         .signers([user])

@@ -37,4 +37,10 @@ pub enum VaultError {
 
     #[msg("Withdrawal would leave dust amount")]
     DustWithdrawal,
+
+    #[msg("Operation would leave vault below rent-exempt minimum")]
+    BelowRentExemption,
+
+    #[msg("No pending authority transfer to accept")]
+    NoPendingTransfer,
 }

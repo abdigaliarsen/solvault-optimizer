@@ -9,7 +9,7 @@ anchor build --no-idl -- --tools-version v1.52
 # Build IDL separately (uses platform-tools cargo/rustc)
 RUSTC=~/.cache/solana/v1.52/platform-tools/rust/bin/rustc CARGO=~/.cache/solana/v1.52/platform-tools/rust/bin/cargo anchor idl build --out target/idl/solvault.json
 
-# Run all 34 integration tests (starts local validator)
+# Run all 37 integration tests (starts local validator)
 anchor test --skip-build
 
 # Quick compilation check (no validator needed)
@@ -27,11 +27,11 @@ Deployed to Solana devnet.
 ## Project Structure
 
 - `programs/solvault/src/` — Anchor smart contract (Rust)
-  - `lib.rs` — Program entry, 9 instructions
+  - `lib.rs` — Program entry, 10 instructions
   - `state.rs` — Vault, UserPosition, Allocation accounts
-  - `errors.rs` — 12 custom error codes
+  - `errors.rs` — 14 custom error codes
   - `instructions/` — Handler for each instruction
-- `tests/solvault.ts` — 34 TypeScript integration tests
+- `tests/solvault.ts` — 37 TypeScript integration tests
 - `frontend/` — React/Vite/Tailwind landing page & dashboard
 
 ## Rules
@@ -48,7 +48,7 @@ Deployed to Solana devnet.
 
 - `MIN_DEPOSIT_LAMPORTS` = 10,000,000 (0.01 SOL)
 - `MAX_FEE_BPS` = 3000 (30%)
-- `SHARES_PER_SOL` = 1,000,000
+- `SHARES_PER_SOL` = 1,000,000,000
 - `MAX_ALLOCATIONS` = 10
 
 ## PDA Seeds
@@ -62,5 +62,8 @@ Seeds must be consistent between Rust (`programs/solvault/src/state.rs`) and Typ
 
 - Treasury is the vault PDA itself (no separate treasury account). SOL is held directly in the vault PDA.
 - Withdraw modifies vault PDA lamports directly via `try_borrow_mut_lamports()` since the program owns the vault PDA.
+- Withdraw and collect_fees enforce rent-exemption: vault must retain `Rent::minimum_balance()` after any transfer.
 - `init_if_needed` feature is enabled in `programs/solvault/Cargo.toml` for lazy UserPosition creation.
+- Authority transfer is two-step: `propose_authority` (current authority sets pending) → `accept_authority` (new authority signs to confirm).
+- All `u128 → u64` casts use `try_into()` to prevent silent truncation.
 - The `--tools-version v1.52` flag is needed because `constant_time_eq` crate requires edition2024 (rustc 1.85+).
