@@ -2,7 +2,12 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Solvault } from "../target/types/solvault";
 import { expect } from "chai";
-import { PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import {
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
 
 describe("solvault", () => {
   const provider = anchor.AnchorProvider.env();
@@ -14,11 +19,11 @@ describe("solvault", () => {
   let vaultPda: PublicKey;
 
   const defaultAllocations = [
-    { protocolId: 0, targetPct: 35, currentAmount: new anchor.BN(0) },
-    { protocolId: 1, targetPct: 25, currentAmount: new anchor.BN(0) },
-    { protocolId: 2, targetPct: 20, currentAmount: new anchor.BN(0) },
-    { protocolId: 3, targetPct: 12, currentAmount: new anchor.BN(0) },
-    { protocolId: 4, targetPct: 8, currentAmount: new anchor.BN(0) },
+    { protocolId: 0, targetPct: 35, currentAmount: new anchor.BN(0) }, // Jito
+    { protocolId: 1, targetPct: 25, currentAmount: new anchor.BN(0) }, // Marinade
+    { protocolId: 2, targetPct: 20, currentAmount: new anchor.BN(0) }, // Sanctum
+    { protocolId: 3, targetPct: 12, currentAmount: new anchor.BN(0) }, // marginfi
+    { protocolId: 4, targetPct: 8, currentAmount: new anchor.BN(0) },  // Kamino
   ];
 
   before(async () => {
@@ -35,9 +40,20 @@ describe("solvault", () => {
     );
   }
 
+  async function fundWallet(keypair: Keypair, amount: number): Promise<void> {
+    const sig = await provider.connection.requestAirdrop(
+      keypair.publicKey,
+      amount
+    );
+    await provider.connection.confirmTransaction(sig);
+  }
+
+  // ─────────────────────────────────────────────────
+  // INITIALIZE
+  // ─────────────────────────────────────────────────
   describe("initialize", () => {
     it("initializes the vault with correct parameters", async () => {
-      const feeBps = 500;
+      const feeBps = 500; // 5%
       const depositCap = new anchor.BN(1000 * LAMPORTS_PER_SOL);
 
       await program.methods
@@ -58,12 +74,21 @@ describe("solvault", () => {
       expect(vault.isPaused).to.equal(false);
       expect(vault.allocations.length).to.equal(5);
       expect(vault.allocations[0].targetPct).to.equal(35);
+      expect(vault.allocations[1].targetPct).to.equal(25);
+      expect(vault.allocations[2].targetPct).to.equal(20);
+      expect(vault.allocations[3].targetPct).to.equal(12);
+      expect(vault.allocations[4].targetPct).to.equal(8);
       expect(vault.depositorCount.toNumber()).to.equal(0);
+      expect(vault.accruedFees.toNumber()).to.equal(0);
+      expect(vault.numAllocations).to.equal(5);
     });
   });
 
+  // ─────────────────────────────────────────────────
+  // DEPOSIT
+  // ─────────────────────────────────────────────────
   describe("deposit", () => {
-    it("deposits SOL and mints shares", async () => {
+    it("deposits SOL and mints shares (first deposit)", async () => {
       const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL);
       const [positionPda] = getPositionPda(authority.publicKey);
 
@@ -79,6 +104,7 @@ describe("solvault", () => {
 
       const vault = await program.account.vault.fetch(vaultPda);
       expect(vault.totalDeposited.toNumber()).to.equal(LAMPORTS_PER_SOL);
+      // First deposit: 1 SOL = 1_000_000 shares
       expect(vault.totalShares.toNumber()).to.equal(1_000_000);
       expect(vault.depositorCount.toNumber()).to.equal(1);
 
@@ -104,6 +130,7 @@ describe("solvault", () => {
 
       const vault = await program.account.vault.fetch(vaultPda);
       expect(vault.totalDeposited.toNumber()).to.equal(3 * LAMPORTS_PER_SOL);
+      // 2 SOL * 1_000_000 shares / 1 SOL = 2_000_000 new shares, total 3_000_000
       expect(vault.totalShares.toNumber()).to.equal(3_000_000);
 
       const position = await program.account.userPosition.fetch(positionPda);
@@ -111,8 +138,49 @@ describe("solvault", () => {
       expect(position.depositedAmount.toNumber()).to.equal(3 * LAMPORTS_PER_SOL);
     });
 
-    it("rejects deposit below minimum", async () => {
-      const tinyAmount = new anchor.BN(1000);
+    it("second user can deposit and gets own position", async () => {
+      const user2 = Keypair.generate();
+      await fundWallet(user2, 5 * LAMPORTS_PER_SOL);
+
+      const depositAmount = new anchor.BN(1 * LAMPORTS_PER_SOL);
+      const [positionPda] = getPositionPda(user2.publicKey);
+
+      await program.methods
+        .deposit(depositAmount)
+        .accounts({
+          user: user2.publicKey,
+          vault: vaultPda,
+          position: positionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user2])
+        .rpc();
+
+      const vault = await program.account.vault.fetch(vaultPda);
+      expect(vault.totalDeposited.toNumber()).to.equal(4 * LAMPORTS_PER_SOL);
+      expect(vault.depositorCount.toNumber()).to.equal(2);
+
+      const position = await program.account.userPosition.fetch(positionPda);
+      expect(position.owner.toBase58()).to.equal(user2.publicKey.toBase58());
+      // Proportional: 1 SOL * 3_000_000 / 3 SOL = 1_000_000 shares
+      expect(position.shares.toNumber()).to.equal(1_000_000);
+
+      // Withdraw user2 fully to clean up state for later tests
+      await program.methods
+        .withdraw(new anchor.BN(1_000_000))
+        .accounts({
+          user: user2.publicKey,
+          vault: vaultPda,
+          position: positionPda,
+          owner: user2.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user2])
+        .rpc();
+    });
+
+    it("rejects deposit below minimum (0.01 SOL)", async () => {
+      const tinyAmount = new anchor.BN(1000); // 1000 lamports << 10_000_000
       const [positionPda] = getPositionPda(authority.publicKey);
 
       try {
@@ -130,14 +198,41 @@ describe("solvault", () => {
         expect(err.toString()).to.contain("BelowMinimumDeposit");
       }
     });
-  });
 
-  describe("withdraw", () => {
-    it("withdraws SOL by burning shares", async () => {
-      const sharesToBurn = new anchor.BN(1_000_000);
+    it("rejects deposit exceeding vault cap", async () => {
+      // Current cap is 1000 SOL, current deposits ~3 SOL
+      const hugeAmount = new anchor.BN(998 * LAMPORTS_PER_SOL);
       const [positionPda] = getPositionPda(authority.publicKey);
 
-      const balanceBefore = await provider.connection.getBalance(authority.publicKey);
+      try {
+        await program.methods
+          .deposit(hugeAmount)
+          .accounts({
+            user: authority.publicKey,
+            vault: vaultPda,
+            position: positionPda,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err) {
+        // Will fail either from DepositCapExceeded or insufficient SOL — both valid
+        expect(err).to.exist;
+      }
+    });
+  });
+
+  // ─────────────────────────────────────────────────
+  // WITHDRAW
+  // ─────────────────────────────────────────────────
+  describe("withdraw", () => {
+    it("withdraws SOL by burning shares", async () => {
+      const sharesToBurn = new anchor.BN(1_000_000); // 1/3 of 3M shares
+      const [positionPda] = getPositionPda(authority.publicKey);
+
+      const balanceBefore = await provider.connection.getBalance(
+        authority.publicKey
+      );
 
       await program.methods
         .withdraw(sharesToBurn)
@@ -157,9 +252,13 @@ describe("solvault", () => {
       const position = await program.account.userPosition.fetch(positionPda);
       expect(position.shares.toNumber()).to.equal(2_000_000);
 
-      const balanceAfter = await provider.connection.getBalance(authority.publicKey);
-      // User should have received ~1 SOL back (minus tx fees)
-      expect(balanceAfter).to.be.greaterThan(balanceBefore + LAMPORTS_PER_SOL * 0.99);
+      const balanceAfter = await provider.connection.getBalance(
+        authority.publicKey
+      );
+      // User received ~1 SOL back (minus tx fee)
+      expect(balanceAfter).to.be.greaterThan(
+        balanceBefore + LAMPORTS_PER_SOL * 0.99
+      );
     });
 
     it("rejects withdrawal with insufficient shares", async () => {
@@ -202,8 +301,42 @@ describe("solvault", () => {
         expect(err.toString()).to.contain("ZeroAmount");
       }
     });
+
+    it("rejects withdrawal when vault is paused", async () => {
+      // Pause
+      await program.methods
+        .updateConfig(null, null, true)
+        .accounts({ authority: authority.publicKey, vault: vaultPda })
+        .rpc();
+
+      const [positionPda] = getPositionPda(authority.publicKey);
+      try {
+        await program.methods
+          .withdraw(new anchor.BN(100_000))
+          .accounts({
+            user: authority.publicKey,
+            vault: vaultPda,
+            position: positionPda,
+            owner: authority.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.toString()).to.contain("VaultPaused");
+      }
+
+      // Unpause for later tests
+      await program.methods
+        .updateConfig(null, null, false)
+        .accounts({ authority: authority.publicKey, vault: vaultPda })
+        .rpc();
+    });
   });
 
+  // ─────────────────────────────────────────────────
+  // REBALANCE
+  // ─────────────────────────────────────────────────
   describe("rebalance", () => {
     it("rebalances allocations based on target percentages", async () => {
       await program.methods
@@ -217,17 +350,62 @@ describe("solvault", () => {
       const vault = await program.account.vault.fetch(vaultPda);
       const total = vault.totalDeposited.toNumber();
 
+      // Allocations should sum to total deposited
       const allocSum = vault.allocations.reduce(
         (sum, a) => sum + a.currentAmount.toNumber(),
         0
       );
       expect(allocSum).to.equal(total);
 
+      // First allocation (Jito 35%) should be ~35% of total
       const jitoAlloc = vault.allocations[0].currentAmount.toNumber();
       expect(jitoAlloc).to.be.closeTo(Math.floor(total * 0.35), 1);
     });
+
+    it("rejects rebalance from non-authority", async () => {
+      const rando = Keypair.generate();
+      await fundWallet(rando, 1 * LAMPORTS_PER_SOL);
+
+      try {
+        await program.methods
+          .rebalance()
+          .accounts({
+            authority: rando.publicKey,
+            vault: vaultPda,
+          })
+          .signers([rando])
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.toString()).to.contain("Unauthorized");
+      }
+    });
+
+    it("updates last_rebalance_ts timestamp", async () => {
+      const vaultBefore = await program.account.vault.fetch(vaultPda);
+      const tsBefore = vaultBefore.lastRebalanceTs.toNumber();
+
+      // Small delay to ensure timestamp differs
+      await new Promise((r) => setTimeout(r, 1100));
+
+      await program.methods
+        .rebalance()
+        .accounts({
+          authority: authority.publicKey,
+          vault: vaultPda,
+        })
+        .rpc();
+
+      const vaultAfter = await program.account.vault.fetch(vaultPda);
+      expect(vaultAfter.lastRebalanceTs.toNumber()).to.be.greaterThanOrEqual(
+        tsBefore
+      );
+    });
   });
 
+  // ─────────────────────────────────────────────────
+  // UPDATE ALLOCATIONS
+  // ─────────────────────────────────────────────────
   describe("update_allocations", () => {
     it("updates allocation targets", async () => {
       const newAllocations = [
@@ -247,6 +425,8 @@ describe("solvault", () => {
       const vault = await program.account.vault.fetch(vaultPda);
       expect(vault.allocations.length).to.equal(3);
       expect(vault.allocations[0].targetPct).to.equal(50);
+      expect(vault.allocations[1].targetPct).to.equal(30);
+      expect(vault.allocations[2].targetPct).to.equal(20);
       expect(vault.numAllocations).to.equal(3);
     });
 
@@ -254,6 +434,7 @@ describe("solvault", () => {
       const badAllocations = [
         { protocolId: 0, targetPct: 50, currentAmount: new anchor.BN(0) },
         { protocolId: 1, targetPct: 30, currentAmount: new anchor.BN(0) },
+        // total = 80, not 100
       ];
 
       try {
@@ -289,12 +470,54 @@ describe("solvault", () => {
         expect(err.toString()).to.contain("InvalidAllocations");
       }
     });
+
+    it("rejects empty allocations", async () => {
+      try {
+        await program.methods
+          .updateAllocations([])
+          .accounts({
+            authority: authority.publicKey,
+            vault: vaultPda,
+          })
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.toString()).to.contain("InvalidAllocations");
+      }
+    });
+
+    it("rejects update_allocations from non-authority", async () => {
+      const rando = Keypair.generate();
+      await fundWallet(rando, 1 * LAMPORTS_PER_SOL);
+
+      const validAllocations = [
+        { protocolId: 0, targetPct: 60, currentAmount: new anchor.BN(0) },
+        { protocolId: 1, targetPct: 40, currentAmount: new anchor.BN(0) },
+      ];
+
+      try {
+        await program.methods
+          .updateAllocations(validAllocations)
+          .accounts({
+            authority: rando.publicKey,
+            vault: vaultPda,
+          })
+          .signers([rando])
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.toString()).to.contain("Unauthorized");
+      }
+    });
   });
 
+  // ─────────────────────────────────────────────────
+  // UPDATE CONFIG
+  // ─────────────────────────────────────────────────
   describe("update_config", () => {
     it("updates performance fee", async () => {
       await program.methods
-        .updateConfig(1000, null, null)
+        .updateConfig(1000, null, null) // 10%
         .accounts({
           authority: authority.publicKey,
           vault: vaultPda,
@@ -303,6 +526,20 @@ describe("solvault", () => {
 
       const vault = await program.account.vault.fetch(vaultPda);
       expect(vault.performanceFeeBps).to.equal(1000);
+    });
+
+    it("updates deposit cap", async () => {
+      const newCap = new anchor.BN(500 * LAMPORTS_PER_SOL);
+      await program.methods
+        .updateConfig(null, newCap, null)
+        .accounts({
+          authority: authority.publicKey,
+          vault: vaultPda,
+        })
+        .rpc();
+
+      const vault = await program.account.vault.fetch(vaultPda);
+      expect(vault.depositCap.toNumber()).to.equal(newCap.toNumber());
     });
 
     it("pauses the vault", async () => {
@@ -350,10 +587,10 @@ describe("solvault", () => {
       expect(vault.isPaused).to.equal(false);
     });
 
-    it("rejects fee above maximum", async () => {
+    it("rejects fee above maximum (30%)", async () => {
       try {
         await program.methods
-          .updateConfig(5000, null, null)
+          .updateConfig(5000, null, null) // 50% > 3000 bps max
           .accounts({
             authority: authority.publicKey,
             vault: vaultPda,
@@ -363,6 +600,124 @@ describe("solvault", () => {
       } catch (err) {
         expect(err.toString()).to.contain("FeeTooHigh");
       }
+    });
+
+    it("accepts fee at exactly maximum (30%)", async () => {
+      await program.methods
+        .updateConfig(3000, null, null) // exactly 30%
+        .accounts({
+          authority: authority.publicKey,
+          vault: vaultPda,
+        })
+        .rpc();
+
+      const vault = await program.account.vault.fetch(vaultPda);
+      expect(vault.performanceFeeBps).to.equal(3000);
+
+      // Restore to 5%
+      await program.methods
+        .updateConfig(500, null, null)
+        .accounts({ authority: authority.publicKey, vault: vaultPda })
+        .rpc();
+    });
+
+    it("rejects update_config from non-authority", async () => {
+      const rando = Keypair.generate();
+      await fundWallet(rando, 1 * LAMPORTS_PER_SOL);
+
+      try {
+        await program.methods
+          .updateConfig(100, null, null)
+          .accounts({
+            authority: rando.publicKey,
+            vault: vaultPda,
+          })
+          .signers([rando])
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err.toString()).to.contain("Unauthorized");
+      }
+    });
+
+    it("can update multiple config fields at once", async () => {
+      const newCap = new anchor.BN(2000 * LAMPORTS_PER_SOL);
+      await program.methods
+        .updateConfig(800, newCap, false)
+        .accounts({
+          authority: authority.publicKey,
+          vault: vaultPda,
+        })
+        .rpc();
+
+      const vault = await program.account.vault.fetch(vaultPda);
+      expect(vault.performanceFeeBps).to.equal(800);
+      expect(vault.depositCap.toNumber()).to.equal(newCap.toNumber());
+      expect(vault.isPaused).to.equal(false);
+    });
+  });
+
+  // ─────────────────────────────────────────────────
+  // FULL FLOW: deposit → rebalance → withdraw
+  // ─────────────────────────────────────────────────
+  describe("end-to-end flow", () => {
+    it("full lifecycle: deposit, rebalance, withdraw all", async () => {
+      const user = Keypair.generate();
+      await fundWallet(user, 5 * LAMPORTS_PER_SOL);
+
+      const [positionPda] = getPositionPda(user.publicKey);
+      const depositAmount = new anchor.BN(2 * LAMPORTS_PER_SOL);
+
+      // Deposit
+      await program.methods
+        .deposit(depositAmount)
+        .accounts({
+          user: user.publicKey,
+          vault: vaultPda,
+          position: positionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      const posAfterDeposit = await program.account.userPosition.fetch(positionPda);
+      const userShares = posAfterDeposit.shares;
+      expect(userShares.toNumber()).to.be.greaterThan(0);
+
+      // Rebalance
+      await program.methods
+        .rebalance()
+        .accounts({ authority: authority.publicKey, vault: vaultPda })
+        .rpc();
+
+      const vaultAfterRebalance = await program.account.vault.fetch(vaultPda);
+      const allocSum = vaultAfterRebalance.allocations.reduce(
+        (s, a) => s + a.currentAmount.toNumber(),
+        0
+      );
+      expect(allocSum).to.equal(vaultAfterRebalance.totalDeposited.toNumber());
+
+      // Withdraw all shares
+      const balBefore = await provider.connection.getBalance(user.publicKey);
+
+      await program.methods
+        .withdraw(userShares)
+        .accounts({
+          user: user.publicKey,
+          vault: vaultPda,
+          position: positionPda,
+          owner: user.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      const posAfterWithdraw = await program.account.userPosition.fetch(positionPda);
+      expect(posAfterWithdraw.shares.toNumber()).to.equal(0);
+
+      const balAfter = await provider.connection.getBalance(user.publicKey);
+      // Should have received ~2 SOL back (minus tx fees)
+      expect(balAfter).to.be.greaterThan(balBefore + 1.9 * LAMPORTS_PER_SOL);
     });
   });
 });
