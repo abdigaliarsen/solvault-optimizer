@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
   Wallet,
   ArrowDownToLine,
@@ -181,10 +182,10 @@ const AppDashboard = () => {
             </Link>
             <Link
               to="/"
-              className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-3 w-3" />
-              Back to Home
+              <span className="hidden sm:inline">Back to Home</span>
             </Link>
           </div>
 
@@ -198,7 +199,10 @@ const AppDashboard = () => {
               <span className="text-xs text-muted-foreground">Devnet</span>
             </div>
 
-            <button className="flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/20 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors">
+            <button
+              onClick={() => toast.info("Wallet integration coming soon", { description: "This is a demo dashboard on devnet" })}
+              className="flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/20 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+            >
               <Wallet className="h-4 w-4" />
               Connect Wallet
             </button>
@@ -216,6 +220,9 @@ const AppDashboard = () => {
               <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-[11px] font-medium text-primary">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                 Active
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/5 px-2.5 py-0.5 text-[11px] font-medium text-orange-400">
+                Demo
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -293,10 +300,13 @@ const AppDashboard = () => {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <label className="text-xs text-muted-foreground">
-                          {tab === "deposit" ? "You deposit" : "Shares to burn"}
+                          {tab === "deposit" ? "You deposit" : "You withdraw"}
                         </label>
                         <span className="text-xs text-muted-foreground">
-                          Balance: <span className="text-foreground font-medium">432.50 SOL</span>
+                          {tab === "deposit" ? "Balance" : "Position"}:{" "}
+                          <span className="text-foreground font-medium">
+                            {tab === "deposit" ? "432.50" : "150.00"} SOL
+                          </span>
                         </span>
                       </div>
                       <div className="relative">
@@ -353,7 +363,7 @@ const AppDashboard = () => {
                             <div className="flex justify-between text-xs">
                               <span className="text-muted-foreground">You receive</span>
                               <span className="font-medium">
-                                {(Number(amount) * 1_000_000 / 1_000_000_000 * 1_000_000).toLocaleString()} shares
+                                {(Number(amount) * 1_000_000).toLocaleString()} shares
                               </span>
                             </div>
                             <div className="flex justify-between text-xs">
@@ -487,10 +497,10 @@ const AppDashboard = () => {
                             {a.pct}%
                           </span>
                         </div>
-                        <div className="h-1 rounded-full bg-muted overflow-hidden">
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
-                            animate={{ width: `${a.pct}%` }}
+                            animate={{ width: `${Math.max(a.pct, 5)}%` }}
                             transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
                             className="h-full rounded-full"
                             style={{ backgroundColor: a.color }}
