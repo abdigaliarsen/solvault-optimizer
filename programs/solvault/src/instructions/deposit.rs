@@ -94,6 +94,14 @@ pub fn handler(ctx: Context<Deposit>, amount: u64) -> Result<()> {
             .ok_or(VaultError::MathOverflow)?;
     }
 
+    emit!(DepositEvent {
+        user: ctx.accounts.user.key(),
+        amount,
+        shares_minted: shares_to_mint,
+        total_deposited: vault.total_deposited,
+        total_shares: vault.total_shares,
+    });
+
     msg!(
         "Deposited {} lamports, minted {} shares",
         amount,
@@ -105,6 +113,8 @@ pub fn handler(ctx: Context<Deposit>, amount: u64) -> Result<()> {
 /// Calculate shares to mint for a given deposit amount.
 /// First deposit: 1 SOL = SHARES_PER_SOL shares.
 /// Subsequent: proportional to existing share/deposit ratio.
+/// Rounding: integer division truncates DOWN, so the depositor receives
+/// slightly fewer shares, protecting existing share holders.
 fn calculate_shares_for_deposit(
     deposit_amount: u64,
     total_deposited: u64,

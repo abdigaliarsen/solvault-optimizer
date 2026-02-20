@@ -14,8 +14,6 @@ pub struct CollectFees<'info> {
         has_one = authority @ VaultError::Unauthorized,
     )]
     pub vault: Account<'info, Vault>,
-
-    pub system_program: Program<'info, System>,
 }
 
 pub fn handler(ctx: Context<CollectFees>) -> Result<()> {
@@ -32,8 +30,13 @@ pub fn handler(ctx: Context<CollectFees>) -> Result<()> {
         .lamports()
         .checked_sub(fee_amount)
         .ok_or(VaultError::MathOverflow)?;
+
+    // Must retain rent-exemption AND enough to cover depositor claims
+    let required_minimum = min_balance
+        .checked_add(vault.total_deposited)
+        .ok_or(VaultError::MathOverflow)?;
     require!(
-        vault_lamports_after >= min_balance,
+        vault_lamports_after >= required_minimum,
         VaultError::BelowRentExemption
     );
 
@@ -49,6 +52,11 @@ pub fn handler(ctx: Context<CollectFees>) -> Result<()> {
     // Reset accrued fees
     let vault = &mut ctx.accounts.vault;
     vault.accrued_fees = 0;
+
+    emit!(FeeCollectedEvent {
+        authority: ctx.accounts.authority.key(),
+        amount: fee_amount,
+    });
 
     msg!("Collected {} lamports in fees", fee_amount);
     Ok(())

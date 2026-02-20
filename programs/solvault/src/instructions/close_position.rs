@@ -16,11 +16,13 @@ pub struct ClosePosition<'info> {
         constraint = position.shares == 0 @ VaultError::InsufficientShares,
     )]
     pub position: Account<'info, UserPosition>,
-
-    pub system_program: Program<'info, System>,
 }
 
-pub fn handler(_ctx: Context<ClosePosition>) -> Result<()> {
+pub fn handler(ctx: Context<ClosePosition>) -> Result<()> {
+    emit!(PositionClosedEvent {
+        user: ctx.accounts.user.key(),
+    });
+
     msg!("Position closed, rent reclaimed");
     Ok(())
 }

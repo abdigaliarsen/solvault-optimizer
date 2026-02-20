@@ -28,7 +28,7 @@ pub struct Withdraw<'info> {
 pub fn handler(ctx: Context<Withdraw>, shares_to_burn: u64) -> Result<()> {
     let vault = &ctx.accounts.vault;
 
-    require!(!vault.is_paused, VaultError::VaultPaused);
+    // Withdrawals are always allowed — even when paused — so users can always exit
     require!(shares_to_burn > 0, VaultError::ZeroAmount);
     require!(
         ctx.accounts.position.shares >= shares_to_burn,
@@ -159,8 +159,20 @@ pub fn handler(ctx: Context<Withdraw>, shares_to_burn: u64) -> Result<()> {
         .ok_or(VaultError::MathOverflow)?;
 
     if remaining_shares == 0 {
-        vault.depositor_count = vault.depositor_count.saturating_sub(1);
+        vault.depositor_count = vault
+            .depositor_count
+            .checked_sub(1)
+            .ok_or(VaultError::MathOverflow)?;
     }
+
+    emit!(WithdrawEvent {
+        user: ctx.accounts.user.key(),
+        shares_burned: shares_to_burn,
+        amount_returned: net_amount,
+        fee_charged: fee,
+        total_deposited: vault.total_deposited,
+        total_shares: vault.total_shares,
+    });
 
     msg!(
         "Withdrew {} lamports (fee: {}), burned {} shares",
@@ -171,6 +183,9 @@ pub fn handler(ctx: Context<Withdraw>, shares_to_burn: u64) -> Result<()> {
     Ok(())
 }
 
+/// Calculate the SOL amount for a given number of shares to burn.
+/// Rounding: integer division truncates DOWN, which favors the vault
+/// (withdrawer receives slightly less), protecting remaining share holders.
 fn calculate_withdrawal_amount(
     shares_to_burn: u64,
     total_deposited: u64,

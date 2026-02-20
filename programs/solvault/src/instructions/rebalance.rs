@@ -37,11 +37,13 @@ pub fn handler(ctx: Context<Rebalance>) -> Result<()> {
                 .checked_sub(allocated)
                 .ok_or(VaultError::MathOverflow)?;
         } else {
-            let target_amount = (total as u128)
+            let target_amount: u64 = (total as u128)
                 .checked_mul(alloc.target_pct as u128)
                 .ok_or(VaultError::MathOverflow)?
                 .checked_div(100)
-                .ok_or(VaultError::MathOverflow)? as u64;
+                .ok_or(VaultError::MathOverflow)?
+                .try_into()
+                .map_err(|_| VaultError::MathOverflow)?;
             alloc.current_amount = target_amount;
             allocated = allocated
                 .checked_add(target_amount)
@@ -50,6 +52,12 @@ pub fn handler(ctx: Context<Rebalance>) -> Result<()> {
     }
 
     vault.last_rebalance_ts = Clock::get()?.unix_timestamp;
+
+    emit!(RebalanceEvent {
+        timestamp: vault.last_rebalance_ts,
+        total_deposited: total,
+        num_allocations: num_allocs as u8,
+    });
 
     msg!("Rebalanced {} lamports across {} protocols", total, num_allocs);
     Ok(())

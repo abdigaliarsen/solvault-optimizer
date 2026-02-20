@@ -39,5 +39,11 @@ pub fn handler(
         msg!("Vault paused: {}", paused);
     }
 
+    emit!(ConfigUpdatedEvent {
+        fee_bps: new_fee_bps,
+        deposit_cap: new_deposit_cap,
+        paused: new_paused,
+    });
+
     Ok(())
 }

@@ -55,6 +55,64 @@ pub struct Allocation {
     pub current_amount: u64,
 }
 
+// ─── Events ──────────────────────────────────────────────────
+
+#[event]
+pub struct DepositEvent {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub shares_minted: u64,
+    pub total_deposited: u64,
+    pub total_shares: u64,
+}
+
+#[event]
+pub struct WithdrawEvent {
+    pub user: Pubkey,
+    pub shares_burned: u64,
+    pub amount_returned: u64,
+    pub fee_charged: u64,
+    pub total_deposited: u64,
+    pub total_shares: u64,
+}
+
+#[event]
+pub struct RebalanceEvent {
+    pub timestamp: i64,
+    pub total_deposited: u64,
+    pub num_allocations: u8,
+}
+
+#[event]
+pub struct ConfigUpdatedEvent {
+    pub fee_bps: Option<u16>,
+    pub deposit_cap: Option<u64>,
+    pub paused: Option<bool>,
+}
+
+#[event]
+pub struct FeeCollectedEvent {
+    pub authority: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct AuthorityProposedEvent {
+    pub current_authority: Pubkey,
+    pub proposed_authority: Pubkey,
+}
+
+#[event]
+pub struct AuthorityAcceptedEvent {
+    pub old_authority: Pubkey,
+    pub new_authority: Pubkey,
+}
+
+#[event]
+pub struct PositionClosedEvent {
+    pub user: Pubkey,
+}
+
 #[account]
 #[derive(InitSpace)]
 pub struct UserPosition {

@@ -311,7 +311,7 @@ describe("solvault", () => {
       }
     });
 
-    it("rejects withdrawal when vault is paused", async () => {
+    it("allows withdrawal even when vault is paused (emergency escape)", async () => {
       // Pause
       await program.methods
         .updateConfig(null, null, true)
@@ -319,20 +319,25 @@ describe("solvault", () => {
         .rpc();
 
       const [positionPda] = getPositionPda(authority.publicKey);
-      try {
-        await program.methods
-          .withdraw(new anchor.BN(100_000))
-          .accounts({
-            user: authority.publicKey,
-            vault: vaultPda,
-            position: positionPda,
-            systemProgram: SystemProgram.programId,
-          })
-          .rpc();
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect(err.toString()).to.contain("VaultPaused");
-      }
+      const positionBefore = await program.account.userPosition.fetch(positionPda);
+      const sharesBefore = positionBefore.shares;
+
+      // Withdraw a small amount — should succeed even though paused
+      const withdrawShares = new anchor.BN(100_000);
+      await program.methods
+        .withdraw(withdrawShares)
+        .accounts({
+          user: authority.publicKey,
+          vault: vaultPda,
+          position: positionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+      const positionAfter = await program.account.userPosition.fetch(positionPda);
+      expect(positionAfter.shares.toNumber()).to.equal(
+        sharesBefore.sub(withdrawShares).toNumber()
+      );
 
       // Unpause for later tests
       await program.methods
@@ -676,7 +681,6 @@ describe("solvault", () => {
           .accounts({
             authority: authority.publicKey,
             vault: vaultPda,
-            systemProgram: SystemProgram.programId,
           })
           .rpc();
         expect.fail("Should have thrown");
@@ -695,7 +699,6 @@ describe("solvault", () => {
           .accounts({
             authority: rando.publicKey,
             vault: vaultPda,
-            systemProgram: SystemProgram.programId,
           })
           .signers([rando])
           .rpc();
@@ -750,7 +753,6 @@ describe("solvault", () => {
         .accounts({
           user: user.publicKey,
           position: positionPda,
-          systemProgram: SystemProgram.programId,
         })
         .signers([user])
         .rpc();
@@ -773,7 +775,6 @@ describe("solvault", () => {
           .accounts({
             user: authority.publicKey,
             position: positionPda,
-            systemProgram: SystemProgram.programId,
           })
           .rpc();
         expect.fail("Should have thrown");
@@ -825,7 +826,6 @@ describe("solvault", () => {
         .accounts({
           user: user.publicKey,
           position: positionPda,
-          systemProgram: SystemProgram.programId,
         })
         .signers([user])
         .rpc();
