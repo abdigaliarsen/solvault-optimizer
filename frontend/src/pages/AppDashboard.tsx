@@ -21,11 +21,11 @@ import {
 // ─── Data ────────────────────────────────────────────────────
 
 const ALLOCATIONS = [
-  { protocol: "Jito", pct: 35, color: "hsl(155, 90%, 51%)", abbr: "JTO", apy: "7.12%" },
-  { protocol: "Marinade", pct: 25, color: "hsl(30, 90%, 55%)", abbr: "MND", apy: "6.50%" },
-  { protocol: "Sanctum", pct: 20, color: "hsl(200, 80%, 60%)", abbr: "SCT", apy: "6.88%" },
-  { protocol: "marginfi", pct: 12, color: "hsl(264, 100%, 64%)", abbr: "MFI", apy: "5.41%" },
-  { protocol: "Kamino", pct: 8, color: "hsl(340, 80%, 60%)", abbr: "KMN", apy: "4.95%" },
+  { protocol: "Jito", pct: 35, color: "hsl(270, 80%, 65%)", abbr: "JTO", apy: "7.12%" },
+  { protocol: "Marinade", pct: 25, color: "hsl(185, 90%, 55%)", abbr: "MND", apy: "6.50%" },
+  { protocol: "Sanctum", pct: 20, color: "hsl(215, 85%, 60%)", abbr: "SCT", apy: "6.88%" },
+  { protocol: "marginfi", pct: 12, color: "hsl(300, 70%, 60%)", abbr: "MFI", apy: "5.41%" },
+  { protocol: "Kamino", pct: 8, color: "hsl(40, 85%, 55%)", abbr: "KMN", apy: "4.95%" },
 ];
 
 const TRANSACTIONS = [
@@ -40,7 +40,7 @@ const TRANSACTIONS = [
 const TX_META = {
   deposit: { label: "Deposit", icon: ArrowDownToLine, color: "text-primary" },
   withdraw: { label: "Withdraw", icon: ArrowUpFromLine, color: "text-orange-400" },
-  rebalance: { label: "Rebalance", icon: Activity, color: "text-[hsl(264,100%,64%)]" },
+  rebalance: { label: "Rebalance", icon: Activity, color: "text-secondary" },
   yield: { label: "Yield", icon: TrendingUp, color: "text-primary" },
 };
 
@@ -95,7 +95,7 @@ function DonutChart({ size = 180, stroke = 18 }: { size?: number; stroke?: numbe
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="hsl(222 30% 14%)"
+          stroke="hsl(230 25% 14%)"
           strokeWidth={stroke}
         />
         {/* Segments */}
@@ -396,7 +396,7 @@ const AppDashboard = () => {
                     <button
                       className={`w-full rounded-xl py-3.5 text-sm font-semibold transition-all ${
                         amount && Number(amount) > 0
-                          ? "bg-primary text-primary-foreground glow-green hover:brightness-110"
+                          ? "bg-primary text-primary-foreground glow-primary hover:brightness-110"
                           : "bg-muted/60 text-muted-foreground/70 border border-border/40 cursor-not-allowed"
                       }`}
                       disabled={!amount || Number(amount) <= 0}

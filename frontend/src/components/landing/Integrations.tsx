@@ -1,7 +1,7 @@
 const protocols = [
   {
     name: "Jito",
-    color: "hsl(155 90% 51%)",
+    color: "hsl(270 80% 65%)",
     logo: (
       <svg viewBox="0 0 32 32" className="h-5 w-5" fill="currentColor">
         <path d="M16 2L4 9v14l12 7 12-7V9L16 2zm0 3.5L25 11v10l-9 5.25L7 21V11l9-5.5z" />
@@ -11,7 +11,7 @@ const protocols = [
   },
   {
     name: "Marinade",
-    color: "hsl(170 60% 45%)",
+    color: "hsl(185 90% 55%)",
     logo: (
       <svg viewBox="0 0 32 32" className="h-5 w-5" fill="currentColor">
         <circle cx="16" cy="16" r="12" fillOpacity="0.3" />
@@ -21,7 +21,7 @@ const protocols = [
   },
   {
     name: "Sanctum",
-    color: "hsl(200 80% 60%)",
+    color: "hsl(215 85% 60%)",
     logo: (
       <svg viewBox="0 0 32 32" className="h-5 w-5" fill="currentColor">
         <path d="M16 4l-2 8h-8l6.5 4.7L10 25l6-4.4 6 4.4-2.5-8.3L26 12h-8L16 4z" />
@@ -30,7 +30,7 @@ const protocols = [
   },
   {
     name: "marginfi",
-    color: "hsl(264 100% 64%)",
+    color: "hsl(300 70% 60%)",
     logo: (
       <svg viewBox="0 0 32 32" className="h-5 w-5" fill="currentColor">
         <rect x="6" y="14" width="4" height="12" rx="1" />
@@ -41,7 +41,7 @@ const protocols = [
   },
   {
     name: "Kamino",
-    color: "hsl(210 70% 50%)",
+    color: "hsl(40 85% 55%)",
     logo: (
       <svg viewBox="0 0 32 32" className="h-5 w-5" fill="currentColor">
         <path d="M16 4L6 10v12l10 6 10-6V10L16 4zm0 4l6 3.5v7L16 22l-6-3.5v-7L16 8z" />
@@ -70,7 +70,7 @@ const Integrations = () => {
             >
               <div
                 className="h-9 w-9 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: `${p.color}`, color: "hsl(222 47% 6%)" }}
+                style={{ backgroundColor: `${p.color}`, color: "hsl(230 35% 7%)" }}
               >
                 {p.logo}
               </div>
