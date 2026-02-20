@@ -1,73 +1,69 @@
-# Welcome to your Lovable project
+# VaultSol — Solana Yield Optimization Vault
 
-## Project info
+Automated SOL yield optimization protocol on Solana. Deposits SOL into a non-custodial vault and routes allocations across leading DeFi protocols (Jito, Marinade, Sanctum, marginfi, Kamino) for optimized yield.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Architecture
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+solvault-optimizer/
+├── programs/solvault/    # Anchor smart contract (Rust)
+│   └── src/
+│       ├── lib.rs                  # Program entry point
+│       ├── state.rs                # Account structs (Vault, UserPosition, Allocation)
+│       ├── errors.rs               # Custom error codes
+│       └── instructions/           # Instruction handlers
+│           ├── initialize.rs       # Create vault with allocation targets
+│           ├── deposit.rs          # Deposit SOL, receive shares
+│           ├── withdraw.rs         # Burn shares, receive SOL
+│           ├── rebalance.rs        # Rebalance across protocols
+│           ├── update_allocations.rs # Update target percentages
+│           └── update_config.rs    # Update fee, cap, pause state
+├── tests/                # Integration tests (TypeScript)
+├── frontend/             # React landing page & dashboard
+├── Anchor.toml           # Anchor workspace config
+└── Cargo.toml            # Rust workspace
 ```
 
-**Edit a file directly in GitHub**
+## Smart Contract
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Built with Anchor 0.31.1 on Solana.
 
-**Use GitHub Codespaces**
+### Instructions
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+| Instruction | Description |
+|---|---|
+| `initialize` | Create vault with admin, fee config, allocation targets |
+| `deposit` | Deposit SOL, receive proportional vault shares |
+| `withdraw` | Burn shares, receive SOL minus performance fee on yield |
+| `rebalance` | Admin rebalances allocations toward target percentages |
+| `update_allocations` | Admin updates target allocation percentages |
+| `update_config` | Admin updates fee, deposit cap, or pause state |
 
-## What technologies are used for this project?
+### Security Features
 
-This project is built with:
+- Checked math (overflow protection) on all arithmetic
+- Share price manipulation prevention (minimum deposit)
+- Authority checks on all admin operations
+- Emergency pause mechanism
+- Deposit caps
+- Dust withdrawal prevention
+- Performance fee with basis points precision
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Build & Test
 
-## How can I deploy this project?
+```sh
+# Build the program
+anchor build --no-idl -- --tools-version v1.52
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+# Run tests (starts local validator automatically)
+anchor test --skip-build
 
-## Can I connect a custom domain to my Lovable project?
+# Frontend
+cd frontend && npm install && npm run dev
+```
 
-Yes, you can!
+## Program ID
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```
+HjFqznCR9NYr3mxYYyhYqYLrm3xNiu71EAz5qHARjWrd
+```

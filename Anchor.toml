@@ -1,0 +1,23 @@
+[toolchain]
+solana_version = "3.0.15"
+platform_tools_version = "v1.52"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+solvault = "HjFqznCR9NYr3mxYYyhYqYLrm3xNiu71EAz5qHARjWrd"
+
+[programs.devnet]
+solvault = "HjFqznCR9NYr3mxYYyhYqYLrm3xNiu71EAz5qHARjWrd"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
